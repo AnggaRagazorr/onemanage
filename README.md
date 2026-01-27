@@ -70,4 +70,4 @@ static const String baseUrl = 'http://YOUR_SERVER_IP:8000/api';
 
 ## 📄 License
 
-Private - All rights reserved.
+Computer Engineering 2023 - All rights reserved.
