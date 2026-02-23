@@ -17,12 +17,24 @@ class PatrolController extends Controller
             $query->where('user_id', $request->user()->id);
         }
 
-        if ($request->filled('date')) {
-            $query->whereDate('captured_at', $request->string('date'));
+        if ($request->filled('start_date')) {
+            $query->whereDate('captured_at', '>=', $request->string('start_date'));
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('captured_at', '<=', $request->string('end_date'));
         }
 
         if ($request->filled('user_id') && $request->user()->role === 'admin') {
             $query->where('user_id', $request->integer('user_id'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('area', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%")
+                    ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%{$search}%"));
+            });
         }
 
         return $query->latest()->paginate(20);
@@ -33,7 +45,7 @@ class PatrolController extends Controller
         $request->validate([
             'area' => 'required|string',
             'barcode' => 'required|string',
-            'photos' => 'required|array|min:1|max:2',
+            'photos' => 'required|array|min:2|max:2',
             'photos.*' => 'image|max:10240',
         ]);
 

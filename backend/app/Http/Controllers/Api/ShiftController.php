@@ -118,4 +118,70 @@ class ShiftController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Get all currently active shifts (admin only)
+     */
+    public function activeShifts()
+    {
+        $activeShifts = SecurityShift::with('user:id,name,username')
+            ->whereNull('clock_out')
+            ->latest('clock_in')
+            ->get();
+
+        return response()->json([
+            'data' => $activeShifts->map(fn($s) => [
+                'user_id' => $s->user_id,
+                'name' => $s->user->name ?? '-',
+                'username' => $s->user->username ?? '-',
+                'shift_type' => $s->shift_type,
+                'clock_in' => $s->clock_in
+                    ? \Carbon\Carbon::parse($s->clock_in)->format('d M Y H:i')
+                    : null,
+            ]),
+            'total_active' => $activeShifts->count(),
+        ]);
+    }
+    /**
+     * Shift history for admin — all shifts (completed + active), paginated
+     */
+    public function history(Request $request)
+    {
+        $query = SecurityShift::with('user:id,name,username')
+            ->latest('clock_in');
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('clock_in', '>=', $request->string('start_date'));
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('clock_in', '<=', $request->string('end_date'));
+        }
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->whereHas('user', fn($q) => $q->where('name', 'like', "%{$search}%")
+                ->orWhere('username', 'like', "%{$search}%"));
+        }
+
+        $shifts = $query->paginate(30);
+        $shifts->getCollection()->transform(function ($s) {
+            $clockIn = $s->clock_in ? \Carbon\Carbon::parse($s->clock_in) : null;
+            $clockOut = $s->clock_out ? \Carbon\Carbon::parse($s->clock_out) : null;
+
+            return [
+                'id' => $s->id,
+                'user_id' => $s->user_id,
+                'name' => $s->user->name ?? '-',
+                'username' => $s->user->username ?? '-',
+                'shift_type' => $s->shift_type,
+                'clock_in' => $clockIn ? $clockIn->format('d M Y H:i') : null,
+                'clock_out' => $clockOut ? $clockOut->format('d M Y H:i') : null,
+                'is_active' => $s->clock_out === null,
+                'duration' => ($clockIn && $clockOut)
+                    ? round($clockIn->diffInMinutes($clockOut))
+                    : null,
+            ];
+        });
+
+        return $shifts;
+    }
 }

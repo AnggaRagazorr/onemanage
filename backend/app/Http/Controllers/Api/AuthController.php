@@ -5,9 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
+    private const COOKIE_NAME = 'om_auth_token';
+    private const COOKIE_MINUTES = 10080; // 7 hari
+
     public function login(Request $request)
     {
         $request->validate([
@@ -26,9 +30,9 @@ class AuthController extends Controller
 
         $tokenName = $request->input('device_name', 'mobile-token');
         $token = $user->createToken($tokenName)->plainTextToken;
+        $isWebClient = $tokenName === 'web';
 
-        return response()->json([
-            'token' => $token,
+        $payload = [
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -36,7 +40,23 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
             ]
-        ]);
+        ];
+
+        if (!$isWebClient) {
+            $payload['token'] = $token;
+        }
+
+        return response()->json($payload)->cookie(
+            self::COOKIE_NAME,
+            $token,
+            self::COOKIE_MINUTES,
+            '/',
+            null,
+            $request->isSecure(),
+            true,
+            false,
+            'lax'
+        );
     }
 
     public function me(Request $request)
@@ -48,10 +68,17 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->bearerToken() ?: $request->cookie(self::COOKIE_NAME);
+
+        if (is_string($token) && str_contains($token, '|')) {
+            [$id] = explode('|', $token, 2);
+            if (is_numeric($id)) {
+                PersonalAccessToken::whereKey((int) $id)->delete();
+            }
+        }
 
         return response()->json([
             'message' => 'Logout berhasil'
-        ]);
+        ])->withoutCookie(self::COOKIE_NAME);
     }
 }

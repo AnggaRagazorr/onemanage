@@ -20,6 +20,16 @@ class DokumenMasukController extends Controller
             $query->whereDate('date', $request->string('date'));
         }
 
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('origin', 'like', "%{$search}%")
+                    ->orWhere('item_name', 'like', "%{$search}%")
+                    ->orWhere('owner', 'like', "%{$search}%")
+                    ->orWhere('receiver', 'like', "%{$search}%");
+            });
+        }
+
         return $query->latest()->paginate(20);
     }
 

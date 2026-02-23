@@ -12,6 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias([
+            'role.admin' => \App\Http\Middleware\EnsureAdminRole::class,
+        ]);
+        $middleware->api(prepend: [
+            \App\Http\Middleware\InjectBearerTokenFromCookie::class,
+        ]);
         $middleware->append(\App\Http\Middleware\ForceCors::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

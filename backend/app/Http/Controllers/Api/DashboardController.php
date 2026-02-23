@@ -8,7 +8,6 @@ use App\Models\Patrol;
 use App\Models\Rekap;
 use App\Models\DokumenMasuk;
 use App\Models\CarpoolVehicle;
-use App\Models\CarpoolLog;
 
 class DashboardController extends Controller
 {
@@ -30,9 +29,9 @@ class DashboardController extends Controller
         $rekapCount = Rekap::whereBetween('created_at', [$startOfDay, $endOfDay])->count();
 
         // 3. Carpool Stats (Available / Total)
+        // Use current vehicle status instead of legacy end_time-based log count.
         $totalVehicles = CarpoolVehicle::count();
-        $activeLogs = CarpoolLog::whereNull('end_time')->count(); // Or check specific status
-        $availableVehicles = max(0, $totalVehicles - $activeLogs);
+        $availableVehicles = CarpoolVehicle::where('status', 'available')->count();
 
         // 4. Barang/Dokumen Masuk Hari Ini
         $dokumenCount = DokumenMasuk::whereDate('created_at', $today)->count();

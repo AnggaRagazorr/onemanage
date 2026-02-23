@@ -28,4 +28,11 @@ class Patrol extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    protected $appends = ['photo_urls'];
+
+    public function getPhotoUrlsAttribute()
+    {
+        return collect($this->photos ?? [])->map(fn($path) => asset('storage/' . $path))->toArray();
+    }
 }

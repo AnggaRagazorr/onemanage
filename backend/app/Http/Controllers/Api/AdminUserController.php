@@ -12,12 +12,6 @@ class AdminUserController extends Controller
 {
     public function index(Request $request)
     {
-        if ($request->user()->role !== 'admin') {
-            return response()->json([
-                'message' => 'Forbidden',
-            ], 403);
-        }
-
         return User::query()
             ->select('id', 'name', 'username', 'email', 'role')
             ->orderBy('name')
@@ -26,18 +20,12 @@ class AdminUserController extends Controller
 
     public function store(Request $request)
     {
-        if ($request->user()->role !== 'admin') {
-            return response()->json([
-                'message' => 'Forbidden',
-            ], 403);
-        }
-
         $request->validate([
             'name' => 'required|string',
             'username' => 'required|string|unique:users,username',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string',
-            'role' => 'nullable|in:admin,security',
+            'role' => 'nullable|in:admin,security,driver,staff',
         ]);
 
         $role = $request->input('role', 'security');
@@ -64,12 +52,6 @@ class AdminUserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        if ($request->user()->role !== 'admin') {
-            return response()->json([
-                'message' => 'Forbidden',
-            ], 403);
-        }
-
         $request->validate([
             'name' => 'required|string',
             'username' => [
@@ -83,7 +65,7 @@ class AdminUserController extends Controller
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
             'password' => 'nullable|string',
-            'role' => 'nullable|in:admin,security',
+            'role' => 'nullable|in:admin,security,driver,staff',
         ]);
 
         $user->name = $request->string('name');
@@ -109,12 +91,6 @@ class AdminUserController extends Controller
 
     public function destroy(Request $request, User $user)
     {
-        if ($request->user()->role !== 'admin') {
-            return response()->json([
-                'message' => 'Forbidden',
-            ], 403);
-        }
-
         $user->delete();
 
         return response()->json([

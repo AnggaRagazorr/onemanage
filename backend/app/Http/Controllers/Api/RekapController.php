@@ -16,8 +16,19 @@ class RekapController extends Controller
             $query->where('user_id', $request->user()->id);
         }
 
-        if ($request->filled('date')) {
-            $query->whereDate('date', $request->string('date'));
+        if ($request->filled('start_date')) {
+            $query->whereDate('date', '>=', $request->string('start_date'));
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('date', '<=', $request->string('end_date'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('guard', 'like', "%{$search}%")
+                    ->orWhere('activity', 'like', "%{$search}%");
+            });
         }
 
         return $query->latest()->paginate(20);
