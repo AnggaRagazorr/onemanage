@@ -128,6 +128,7 @@ App.Pages.Patrol = {
         const btn = document.getElementById('btn-start-scan');
         if (btn) btn.innerHTML = '<span class="material-icons-round">camera_alt</span> Buka Kamera';
 
+        // Extract area label from the QR code (handles pipe-separated & plain text)
         const areaLabel = resolvePatrolAreaFromCode(code);
         if (!areaLabel) {
             App.toast('QR tidak valid. Gunakan QR Area Luar/Balkon/Smoking.', 'warning');
@@ -135,6 +136,7 @@ App.Pages.Patrol = {
         }
 
         this.pendingArea = areaLabel;
+        // Store the FULL raw QR string so backend can validate timestamp + HMAC
         this.pendingBarcode = code;
         await this.openCaptureModal();
     },

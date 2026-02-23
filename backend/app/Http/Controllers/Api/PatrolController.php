@@ -49,6 +49,40 @@ class PatrolController extends Controller
             'photos.*' => 'image|max:10240',
         ]);
 
+        // --- QR Token Validation (pipe-separated format) ---
+        $barcode = $request->string('barcode')->toString();
+        $parts = explode('|', $barcode);
+
+        if (count($parts) === 3) {
+            // Format: NamaArea|UnixTimestamp|HmacSignature
+            [$qrArea, $qrTimestamp, $qrSignature] = $parts;
+            $secret = config('app.qr_patrol_secret', '');
+
+            if (empty($secret)) {
+                return response()->json([
+                    'message' => 'Konfigurasi QR belum di-set di server (QR_PATROL_SECRET).',
+                ], 500);
+            }
+
+            // Re-compute HMAC and compare
+            $expectedSignature = hash_hmac('sha256', "{$qrArea}|{$qrTimestamp}", $secret);
+            if (!hash_equals($expectedSignature, $qrSignature)) {
+                return response()->json([
+                    'message' => 'QR tidak valid — signature tidak cocok.',
+                ], 422);
+            }
+
+            // Check expiry (30 seconds tolerance)
+            $now = time();
+            $tokenTime = (int) $qrTimestamp;
+            if (abs($now - $tokenTime) > 30) {
+                return response()->json([
+                    'message' => 'QR sudah expired. Scan ulang QR terbaru dari alat.',
+                ], 422);
+            }
+        }
+        // If not pipe-separated (manual input / legacy), skip token validation
+
         $paths = [];
         foreach ($request->file('photos', []) as $photo) {
             $paths[] = $photo->store('patrols', 'public');
@@ -57,7 +91,7 @@ class PatrolController extends Controller
         $patrol = Patrol::create([
             'user_id' => $request->user()->id,
             'area' => $request->string('area'),
-            'barcode' => $request->string('barcode'),
+            'barcode' => $barcode,
             'photo_count' => count($paths),
             'photos' => $paths,
             'captured_at' => now(),

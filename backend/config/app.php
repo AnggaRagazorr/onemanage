@@ -107,6 +107,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | QR Patrol Secret Key
+    |--------------------------------------------------------------------------
+    |
+    | Secret key used to validate HMAC signatures on QR codes generated
+    | by ESP32 patrol checkpoint devices. Must match the key flashed
+    | into each ESP32 device.
+    |
+    */
+
+    'qr_patrol_secret' => env('QR_PATROL_SECRET', ''),
+
+    /*
+    |--------------------------------------------------------------------------
     | Maintenance Mode Driver
     |--------------------------------------------------------------------------
     |
