@@ -19,14 +19,18 @@ class DashboardController extends Controller
         $endOfDay = now()->endOfDay();
 
         // 1. Patroli Hari Ini
-        $patrolCount = Patrol::whereDate('created_at', $today)
+        $patrolCount = Patrol::whereDate('captured_at', $today)
             ->where('user_id', $user->id)
             ->count();
         // Assume daily target is 3 for now, or fetch from config
         $patrolTarget = 3;
 
         // 2. Rekap Kejadian Hari Ini
-        $rekapCount = Rekap::whereBetween('created_at', [$startOfDay, $endOfDay])->count();
+        $rekapQuery = Rekap::whereBetween('created_at', [$startOfDay, $endOfDay]);
+        if ($user->role !== 'admin') {
+            $rekapQuery->where('user_id', $user->id);
+        }
+        $rekapCount = $rekapQuery->count();
 
         // 3. Carpool Stats (Available / Total)
         // Use current vehicle status instead of legacy end_time-based log count.

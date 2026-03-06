@@ -21,8 +21,10 @@ App.Router.register('/dashboard', async function () {
         const isActive = shiftRes.is_active || false;
         const shift = shiftRes.shift || {};
 
-        document.getElementById('dash-loading').classList.add('hidden');
+        const loading = document.getElementById('dash-loading');
         const content = document.getElementById('dash-content');
+        if (!loading || !content) return;
+        loading.classList.add('hidden');
         content.classList.remove('hidden');
 
         content.innerHTML = `
@@ -92,6 +94,7 @@ App.Router.register('/dashboard', async function () {
             </div>
         `;
     } catch (err) {
-        document.getElementById('dash-loading').innerHTML = '<p>Gagal memuat data</p>';
+        const loading = document.getElementById('dash-loading');
+        if (loading) loading.innerHTML = '<p>Gagal memuat data</p>';
     }
 });

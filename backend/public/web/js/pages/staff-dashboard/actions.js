@@ -67,6 +67,10 @@ App.Pages.StaffDashboard = {
                                     <label class="form-label">Jam Berangkat</label>
                                     <input type="time" class="form-input" id="st-start-time" required>
                                 </div>
+                                <div class="form-group">
+                                    <label class="form-label">Jam Pulang</label>
+                                    <input type="time" class="form-input" id="st-end-time" required>
+                                </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
@@ -129,7 +133,7 @@ App.Pages.StaffDashboard = {
                             <div class="table-container">
                                 <table>
                                     <thead><tr>
-                                        <th>Tanggal</th><th>Tujuan</th><th>Penumpang</th><th>Jam Berangkat</th><th>Kendaraan</th><th>Driver</th><th>Status</th>
+                                        <th>Tanggal</th><th>Tujuan</th><th>Penumpang</th><th>Jam Berangkat</th><th>Jam Pulang</th><th>Kendaraan</th><th>Driver</th><th>Status</th>
                                     </tr></thead>
                                     <tbody>
                                         ${filteredLogs.map((l, idx) => `
@@ -138,6 +142,7 @@ App.Pages.StaffDashboard = {
                                                 <td>${l.destination || '-'}</td>
                                                 <td>${l.passenger_names || '-'}</td>
                                                 <td>${l.start_time || '-'}</td>
+                                                <td>${l.end_time || '-'}</td>
                                                 <td>${l.vehicle_display || '-'}</td>
                                                 <td>${l.driver_display || '-'}</td>
                                                 <td>${App.Pages.StaffDashboard.statusBadge(l.status)}</td>
@@ -161,15 +166,16 @@ App.Pages.StaffDashboard = {
                 const date = document.getElementById('st-date').value;
                 const destination = document.getElementById('st-destination').value.trim();
                 const start_time = document.getElementById('st-start-time').value;
+                const end_time = document.getElementById('st-end-time').value;
                 const passenger_names = document.getElementById('st-passengers').value.trim();
 
-                if (!date || !destination || !start_time || !passenger_names) {
-                    App.toast('Tanggal, Tujuan, Jam Berangkat, dan Penumpang wajib diisi', 'warning');
+                if (!date || !destination || !start_time || !end_time || !passenger_names) {
+                    App.toast('Tanggal, Tujuan, Jam Berangkat, Jam Pulang, dan Penumpang wajib diisi', 'warning');
                     return;
                 }
 
                 try {
-                    await App.Api.post('/carpool/logs', { date, destination, start_time, passenger_names });
+                    await App.Api.post('/carpool/logs', { date, destination, start_time, end_time, passenger_names });
                     App.toast('Request trip berhasil dikirim. Admin akan pilih kendaraan dan driver.', 'success');
                     App.Router.navigate('/staff/dashboard');
                 } catch (err) {
@@ -216,6 +222,7 @@ App.Pages.StaffDashboard = {
             ['Tujuan', log.destination || '-', false],
             ['Penumpang', log.passenger_names || '-', false],
             ['Jam Berangkat', log.start_time || '-', false],
+            ['Jam Pulang', log.end_time || '-', false],
             ['Kendaraan', log.vehicle_display || '-', false],
             ['Driver', log.driver_display || '-', false],
             ['Status', this.statusBadge(log.status), true],

@@ -5,11 +5,13 @@ App.Push = {
     started: false,
     pollTimer: null,
     pollIntervalMs: 15000,
+    pollInFlight: false,
     swRegistration: null,
     lastId: 0,
     userKey: '',
     hasPrimed: false,
     iosHintShown: false,
+    shownNotifIds: new Set(),
 
     ensureStarted() {
         if (!App.Auth?.isLoggedIn?.()) {
@@ -27,6 +29,8 @@ App.Push = {
         this.lastId = this.readLastId();
         this.hasPrimed = false;
         this.iosHintShown = false;
+        this.pollInFlight = false;
+        this.shownNotifIds = new Set();
         this.started = true;
 
         this.registerServiceWorker();
@@ -46,6 +50,8 @@ App.Push = {
         this.userKey = '';
         this.hasPrimed = false;
         this.iosHintShown = false;
+        this.pollInFlight = false;
+        this.shownNotifIds = new Set();
     },
 
     buildUserKey() {
@@ -145,6 +151,8 @@ App.Push = {
 
     async pollOnce() {
         if (!this.started || !App.Auth?.isLoggedIn?.()) return;
+        if (this.pollInFlight) return;
+        this.pollInFlight = true;
 
         try {
             if (!this.hasPrimed && this.lastId <= 0) {
@@ -180,6 +188,8 @@ App.Push = {
             this.saveLastId(this.lastId);
         } catch (e) {
             // Keep silent; polling retries automatically.
+        } finally {
+            this.pollInFlight = false;
         }
     },
 
@@ -189,6 +199,10 @@ App.Push = {
         const routePath = String(item?.action_url || '');
         const routeUrl = this.toRouteUrl(routePath || '/');
         const id = Number(item?.id || 0);
+        if (id > 0) {
+            if (this.shownNotifIds.has(id)) return;
+            this.shownNotifIds.add(id);
+        }
 
         if ('Notification' in window && Notification.permission === 'granted') {
             if (this.swRegistration?.showNotification) {

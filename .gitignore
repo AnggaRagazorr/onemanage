@@ -28,12 +28,3 @@ backend/storage/framework/views/*
 backend/bootstrap/cache/*
 !backend/storage/.gitkeep
 !backend/storage/logs/.gitkeep
-
-# Flutter
-mobile/.dart_tool/
-mobile/.packages
-mobile/build/
-mobile/.flutter-plugins
-mobile/.flutter-plugins-dependencies
-mobile/*.iml
-mobile/.metadata

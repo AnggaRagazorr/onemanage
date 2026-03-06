@@ -26,12 +26,13 @@ class CarpoolLogController extends Controller
         if (in_array($user->role, ['admin', 'security'])) {
             // Admin & Security see all
         } elseif ($user->role === 'driver') {
-            $query->where('driver_id', function ($sub) use ($user) {
-                $sub->select('id')
-                    ->from('carpool_drivers')
-                    ->where('name', $user->name)
-                    ->limit(1);
-            })->orWhere('user_id', $user->id);
+            $query->where(function ($q) use ($user) {
+                $q->where('driver_id', function ($sub) use ($user) {
+                    $sub->select('id')
+                        ->from('carpool_drivers')
+                        ->where('user_id', $user->id);
+                })->orWhere('user_id', $user->id);
+            });
         } else {
             // security & staff see only their own requests
             $query->where('user_id', $user->id);
@@ -126,6 +127,10 @@ class CarpoolLogController extends Controller
         $log->load(['vehicle', 'driver', 'user', 'approver']);
 
         if ($isAdmin) {
+            // Mark vehicle as in_use immediately on approval
+            if ($vehicle) {
+                $vehicle->markInUse();
+            }
             $this->carpoolNotifier->onApproved($log);
         } else {
             $this->carpoolNotifier->onRequested($log);
@@ -168,6 +173,9 @@ class CarpoolLogController extends Controller
             'approved_at' => now(),
         ]);
 
+        // Mark vehicle as in_use immediately on approval
+        $vehicle->markInUse();
+
         $log->load(['vehicle', 'driver', 'user', 'approver']);
         $this->carpoolNotifier->onApproved($log);
 
@@ -184,6 +192,7 @@ class CarpoolLogController extends Controller
     {
         $request->validate([
             'response' => 'required|in:accept,reject',
+            'reject_reason' => 'required_if:response,reject|nullable|string|min:10',
         ]);
 
         if ($request->user()->role !== 'driver') {
@@ -195,16 +204,24 @@ class CarpoolLogController extends Controller
         }
 
         if ($request->input('response') === 'reject') {
+            // Release vehicle back to available
+            $vehicle = $log->vehicle;
+            if ($vehicle) {
+                $vehicle->markAvailable();
+            }
+
             // Reset to requested, admin will assign vehicle and driver again
+            $rejectReason = $request->input('reject_reason', '');
             $log->update([
                 'status' => 'requested',
+                'reject_reason' => $rejectReason,
                 'vehicle_id' => null,
                 'driver_id' => null,
                 'approved_by' => null,
                 'approved_at' => null,
             ]);
             $log->load(['vehicle', 'driver', 'user']);
-            $this->carpoolNotifier->onDriverRejected($log);
+            $this->carpoolNotifier->onDriverRejected($log, $rejectReason);
             return response()->json(['message' => 'Trip ditolak. Dikembalikan ke Admin.']);
         }
 
@@ -234,11 +251,11 @@ class CarpoolLogController extends Controller
         }
 
         $vehicle = $log->vehicle;
-        if (!$vehicle || !$vehicle->isAvailable()) {
-            return response()->json(['message' => 'Kendaraan tidak tersedia'], 422);
+        if (!$vehicle) {
+            return response()->json(['message' => 'Kendaraan tidak ditemukan'], 422);
         }
 
-        $vehicle->markInUse();
+        // Vehicle is already in_use since approval, no need to markInUse again
 
         $log->update([
             'status' => 'in_use',
@@ -331,6 +348,37 @@ class CarpoolLogController extends Controller
         ]);
     }
 
+    /**
+     * Admin cancels/rejects a trip request.
+     */
+    public function cancel(Request $request, CarpoolLog $log)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'admin') {
+            return response()->json(['message' => 'Hanya admin yang bisa membatalkan trip'], 403);
+        }
+
+        if (in_array($log->status, ['completed', 'cancelled'])) {
+            return response()->json(['message' => 'Trip sudah selesai atau dibatalkan'], 422);
+        }
+
+        // If vehicle was already assigned, release it
+        $vehicle = $log->vehicle;
+        if ($vehicle && in_array($log->status, ['approved', 'confirmed', 'in_use', 'pending_key'])) {
+            $vehicle->markAvailable();
+        }
+
+        $log->update([
+            'status' => 'cancelled',
+        ]);
+
+        return response()->json([
+            'message' => 'Trip dibatalkan',
+            'data' => $this->formatLog($log->fresh(['vehicle', 'driver', 'user', 'approver', 'keyValidator'])),
+        ]);
+    }
+
     private function formatLog(CarpoolLog $log): array
     {
         return [
@@ -350,6 +398,7 @@ class CarpoolLogController extends Controller
             'trip_finished_at' => $log->trip_finished_at,
             'key_validated_by' => $log->key_validated_by,
             'key_returned_at' => $log->key_returned_at,
+            'reject_reason' => $log->reject_reason,
             'vehicle_display' => $log->vehicle ? $log->vehicle->brand . ' (' . $log->vehicle->plate . ')' : '-',
             'vehicle_status' => $log->vehicle ? $log->vehicle->status : null,
             'driver_display' => $log->driver ? $log->driver->name . ' (' . $log->driver->nip . ')' : '-',

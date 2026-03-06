@@ -56,12 +56,16 @@ class RekapController extends Controller
         ]);
 
         // Send Push Notification to Admin
-        \App\Services\FCMService::sendToTopic(
-            'admin_rekap_updates',
-            'Laporan Rekap Baru',
-            'User ' . $request->user()->name . ' baru saja mengirim laporan rekap harian.',
-            ['rekap_id' => $rekap->id]
-        );
+        try {
+            \App\Services\FCMService::sendToTopic(
+                'admin_rekap_updates',
+                'Laporan Rekap Baru',
+                'User ' . $request->user()->name . ' baru saja mengirim laporan rekap harian.',
+                ['rekap_id' => $rekap->id]
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('FCM Rekap notification failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Rekap tersimpan',

@@ -15,7 +15,12 @@ use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\UserNotificationController;
 use App\Http\Controllers\Api\SecurityStatsController;
 
+use App\Http\Controllers\Api\PatrolTokenController;
+
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+
+// Endpoint untuk alat ESP32 (diproteksi via X-Device-Key, bukan Sanctum)
+Route::post('/patrol-tokens', [PatrolTokenController::class, 'store']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -33,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Carpool — vehicles & drivers (CRUD)
     Route::get('/carpool/vehicles', [CarpoolVehicleController::class, 'index']);
     Route::post('/carpool/vehicles', [CarpoolVehicleController::class, 'store']);
+    Route::put('/carpool/vehicles/{vehicle}', [CarpoolVehicleController::class, 'update']);
     Route::delete('/carpool/vehicles/{vehicle}', [CarpoolVehicleController::class, 'destroy']);
     Route::get('/carpool/drivers', [CarpoolDriverController::class, 'index']);
     Route::post('/carpool/drivers', [CarpoolDriverController::class, 'store']);
@@ -46,6 +52,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/carpool/logs/{log}/trip-start', [CarpoolLogController::class, 'tripStart']);
     Route::post('/carpool/logs/{log}/trip-finish', [CarpoolLogController::class, 'tripFinish']);
     Route::post('/carpool/logs/{log}/validate-key', [CarpoolLogController::class, 'validateKey']);
+    Route::post('/carpool/logs/{log}/cancel', [CarpoolLogController::class, 'cancel']);
 
     // KM Audit
     Route::get('/km-audits', [KmAuditController::class, 'index']);

@@ -10,5 +10,6 @@ App.Router.register('/admin/patrol', async function () {
         <div id="ap-content" class="hidden"></div>
     `, 'admin-patrol');
 
-    App.Pages.AdminPatrol.loadData();
+    const today = new Date().toISOString().slice(0, 10);
+    App.Pages.AdminPatrol.loadData({ start_date: today, end_date: today, filter_date: today });
 });

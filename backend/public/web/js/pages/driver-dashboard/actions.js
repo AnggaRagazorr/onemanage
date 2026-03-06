@@ -1,6 +1,20 @@
 App.Pages = App.Pages || {};
 App.Pages.DriverDashboard = {
-    async loadData() {
+    state: {
+        history_date: '',
+    },
+    historyLogs: [],
+
+    getTodayDate() {
+        return App.getTodayDate();
+    },
+
+    async loadData(params = {}) {
+        this.state = { ...this.state, ...params };
+        if (!this.state.history_date) {
+            this.state.history_date = this.getTodayDate();
+        }
+
         const loading = document.getElementById('dd-loading');
         const content = document.getElementById('dd-content');
         if (loading) loading.classList.remove('hidden');
@@ -27,6 +41,9 @@ App.Pages.DriverDashboard = {
         const activeTrips = logs.filter((l) => l.status === 'in_use');
         const pendingKey = logs.filter((l) => l.status === 'pending_key');
         const completed = logs.filter((l) => l.status === 'completed');
+        const historyDate = this.state.history_date || this.getTodayDate();
+        const filteredCompleted = completed.filter((l) => ((l.date || '').toString().slice(0, 10) === historyDate));
+        this.historyLogs = filteredCompleted;
 
         content.innerHTML = `
             ${pendingResponse.length > 0 ? `
@@ -38,8 +55,8 @@ App.Pages.DriverDashboard = {
                 <div class="card-body">
                     ${pendingResponse.map((trip) => `
                         <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;padding:20px;margin-bottom:12px">
-                            <h4 style="font-size:16px;font-weight:700;margin-bottom:4px">${trip.destination}</h4>
-                            <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px">${trip.vehicle_display} - ${App.formatDate(trip.date)}</p>
+                            <h4 style="font-size:16px;font-weight:700;margin-bottom:4px">${App.escapeHtml(trip.destination || '-')}</h4>
+                            <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px">${App.escapeHtml(trip.vehicle_display || '-')} - ${App.formatDate(trip.date)}</p>
                             <div style="display:flex;gap:8px">
                                 <button class="btn btn-primary btn-sm" onclick="App.Pages.DriverDashboard.respond(${trip.id}, 'accept')">
                                     <span class="material-icons-round">check</span> Terima
@@ -64,8 +81,8 @@ App.Pages.DriverDashboard = {
                     ${confirmed.map((trip) => `
                         <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
                             <div>
-                                <strong>${trip.destination}</strong>
-                                <p style="font-size:13px;color:var(--gray-500)">${trip.vehicle_display}</p>
+                                <strong>${App.escapeHtml(trip.destination || '-')}</strong>
+                                <p style="font-size:13px;color:var(--gray-500)">${App.escapeHtml(trip.vehicle_display || '-')}</p>
                             </div>
                             <span class="badge badge-gray">Siap Berangkat</span>
                         </div>
@@ -86,8 +103,8 @@ App.Pages.DriverDashboard = {
                         <div class="trip-card in_use" style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;padding:20px;margin-bottom:16px">
                             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
                                 <div>
-                                    <h4 style="font-size:16px;font-weight:700;margin-bottom:4px">${trip.destination}</h4>
-                                    <p style="font-size:13px;color:var(--gray-500)">${trip.vehicle_display} - ${App.formatDate(trip.date)}</p>
+                                    <h4 style="font-size:16px;font-weight:700;margin-bottom:4px">${App.escapeHtml(trip.destination || '-')}</h4>
+                                    <p style="font-size:13px;color:var(--gray-500)">${App.escapeHtml(trip.vehicle_display || '-')} - ${App.formatDate(trip.date)}</p>
                                 </div>
                                 <span class="badge badge-blue">Sedang Trip</span>
                             </div>
@@ -114,8 +131,8 @@ App.Pages.DriverDashboard = {
                     ${pendingKey.map((trip) => `
                         <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
                             <div>
-                                <strong>${trip.destination}</strong>
-                                <p style="font-size:13px;color:var(--gray-500)">${trip.vehicle_display}</p>
+                                <strong>${App.escapeHtml(trip.destination || '-')}</strong>
+                                <p style="font-size:13px;color:var(--gray-500)">${App.escapeHtml(trip.vehicle_display || '-')}</p>
                             </div>
                             <span class="badge badge-yellow">Menunggu Security</span>
                         </div>
@@ -125,35 +142,146 @@ App.Pages.DriverDashboard = {
             ` : ''}
 
             <div class="card">
-                <div class="card-header"><h3>Riwayat Trip Selesai</h3></div>
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap">
+                    <h3>Riwayat Trip Selesai</h3>
+                    <form id="driver-history-filter-form" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+                        <div class="form-group" style="margin-bottom:0;min-width:170px">
+                            <label class="form-label">Filter Tanggal</label>
+                            <input type="date" class="form-input" id="driver-history-filter-date" value="${historyDate}">
+                        </div>
+                        <button type="submit" class="btn btn-outline btn-sm" style="height:38px">
+                            <span class="material-icons-round">filter_list</span> Terapkan
+                        </button>
+                        <button type="button" class="btn btn-outline btn-sm" style="height:38px" onclick="App.Pages.DriverDashboard.resetHistoryDateFilter()">
+                            <span class="material-icons-round">today</span> Hari Ini
+                        </button>
+                    </form>
+                </div>
                 <div class="card-body">
-                    ${completed.length > 0 ? `
+                    ${filteredCompleted.length > 0 ? `
+                        <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Klik baris riwayat untuk melihat detail trip.</p>
                         <div class="table-container">
                             <table>
                                 <thead><tr><th>Tanggal</th><th>Tujuan</th><th>Kendaraan</th><th>Status</th></tr></thead>
                                 <tbody>
-                                    ${completed.map((l) => `
-                                        <tr>
+                                    ${filteredCompleted.map((l, idx) => `
+                                        <tr style="cursor:pointer" onclick="App.Pages.DriverDashboard.showCompletedDetail(${idx})">
                                             <td>${App.formatDate(l.date)}</td>
-                                            <td>${l.destination || '-'}</td>
-                                            <td>${l.vehicle_display}</td>
+                                            <td>${App.escapeHtml(l.destination || '-')}</td>
+                                            <td>${App.escapeHtml(l.vehicle_display || '-')}</td>
                                             <td><span class="badge badge-green">Selesai</span></td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
                             </table>
                         </div>
-                    ` : '<div class="empty-state"><span class="material-icons-round">history</span><p>Belum ada riwayat</p></div>'}
+                    ` : `<div class="empty-state"><span class="material-icons-round">history</span><p>Belum ada riwayat pada tanggal ${App.formatDate(historyDate)}</p></div>`}
                 </div>
             </div>
         `;
+
+        document.getElementById('driver-history-filter-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const history_date = document.getElementById('driver-history-filter-date')?.value || this.getTodayDate();
+            this.loadData({ history_date });
+        });
+    },
+
+    resetHistoryDateFilter() {
+        this.loadData({ history_date: this.getTodayDate() });
+    },
+
+    showCompletedDetail(index) {
+        const log = this.historyLogs[index];
+        if (!log) {
+            App.toast('Detail trip tidak ditemukan', 'warning');
+            return;
+        }
+
+        const details = [
+            ['Tanggal', App.formatDate(log.date), false],
+            ['Status', '<span class="badge badge-green">Selesai</span>', true],
+            ['Tujuan', log.destination || '-', false],
+            ['Kendaraan', log.vehicle_display || '-', false],
+            ['Pemohon', log.user_name || '-', false],
+            ['Penumpang', log.passenger_names || '-', false],
+            ['Jam Berangkat', log.start_time || '-', false],
+            ['Jam Pulang', log.end_time || '-', false],
+            ['Trip Mulai', App.formatDateTime(log.trip_started_at), false],
+            ['Trip Selesai', App.formatDateTime(log.trip_finished_at), false],
+            ['Kunci Kembali', App.formatDateTime(log.key_returned_at), false],
+            ['KM Terakhir', log.last_km || '-', false],
+        ];
+
+        App.openModal(`
+            <div class="modal-header">
+                <h3>Detail Trip Selesai</h3>
+                <button class="modal-close" onclick="App.closeModal()"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+                    ${details.map(([label, value, isHtml]) => `
+                        <div style="background:var(--gray-50);border:1px solid var(--gray-100);border-radius:10px;padding:10px 12px">
+                            <div style="font-size:11px;color:var(--gray-500);font-weight:600;text-transform:uppercase">${App.escapeHtml(label)}</div>
+                            <div style="margin-top:4px;font-size:14px;font-weight:600">${isHtml ? value : App.escapeHtml(value)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="App.closeModal()">Tutup</button>
+            </div>
+        `);
     },
 
     async respond(logId, action) {
-        if (!confirm(action === 'accept' ? 'Terima tugas ini?' : 'Tolak tugas ini?')) return;
+        if (action === 'accept') {
+            if (!confirm('Terima tugas ini?')) return;
+            try {
+                await App.Api.post(`/carpool/logs/${logId}/respond`, { response: 'accept' });
+                App.toast('Tugas diterima!', 'success');
+                App.Router.navigate('/driver/dashboard');
+            } catch (e) {
+                App.toast('Gagal: ' + e.message, 'error');
+            }
+            return;
+        }
+
+        // Reject: show modal with reason textarea
+        App.openModal(`
+            <div class="modal-header">
+                <h3>Tolak Tugas</h3>
+                <button class="modal-close" onclick="App.closeModal()"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Alasan Penolakan (Wajib)</label>
+                    <textarea class="form-textarea" id="reject-reason" rows="4" placeholder="Jelaskan alasan menolak tugas ini (minimal 10 karakter)..." required></textarea>
+                    <p style="font-size:12px;color:var(--gray-500);margin-top:4px">Alasan akan dikirim ke admin untuk penjadwalan ulang.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="App.closeModal()">Batal</button>
+                <button class="btn btn-danger" onclick="App.Pages.DriverDashboard.doReject(${logId})">
+                    <span class="material-icons-round">close</span> Kirim Penolakan
+                </button>
+            </div>
+        `);
+    },
+
+    async doReject(logId) {
+        const reason = (document.getElementById('reject-reason')?.value || '').trim();
+        if (reason.length < 10) {
+            App.toast('Alasan penolakan minimal 10 karakter', 'warning');
+            return;
+        }
         try {
-            await App.Api.post(`/carpool/logs/${logId}/respond`, { response: action });
-            App.toast(action === 'accept' ? 'Tugas diterima!' : 'Tugas ditolak', 'success');
+            await App.Api.post(`/carpool/logs/${logId}/respond`, {
+                response: 'reject',
+                reject_reason: reason,
+            });
+            App.closeModal();
+            App.toast('Tugas ditolak. Admin akan menjadwalkan ulang.', 'success');
             App.Router.navigate('/driver/dashboard');
         } catch (e) {
             App.toast('Gagal: ' + e.message, 'error');

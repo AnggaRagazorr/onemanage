@@ -52,8 +52,10 @@ App.Router.register('/patrol', async function () {
         const bonusPoint = completedScans >= PATROL_TARGET_PER_SHIFT ? 3 : 0;
         const totalPoint = completedScans + bonusPoint;
 
-        document.getElementById('patrol-loading').classList.add('hidden');
+        const loading = document.getElementById('patrol-loading');
         const content = document.getElementById('patrol-content');
+        if (!loading || !content) return;
+        loading.classList.add('hidden');
         content.classList.remove('hidden');
 
         content.innerHTML = `
@@ -122,19 +124,19 @@ App.Router.register('/patrol', async function () {
                             </thead>
                             <tbody>
                                 ${Array.from({ length: PATROL_ROUNDS_PER_SHIFT }, (_, idx) => {
-                                    const round = idx + 1;
-                                    return `
+            const round = idx + 1;
+            return `
                                         <tr>
                                             <td>Ronde ${round}</td>
                                             ${PATROL_AREAS.map((area) => {
-                                                const done = completedByArea[area] >= round;
-                                                const badgeClass = done ? 'badge-green' : 'badge-gray';
-                                                const badgeText = done ? 'Selesai' : 'Belum';
-                                                return `<td><span class="badge ${badgeClass}">${badgeText}</span></td>`;
-                                            }).join('')}
+                const done = completedByArea[area] >= round;
+                const badgeClass = done ? 'badge-green' : 'badge-gray';
+                const badgeText = done ? 'Selesai' : 'Belum';
+                return `<td><span class="badge ${badgeClass}">${badgeText}</span></td>`;
+            }).join('')}
                                         </tr>
                                     `;
-                                }).join('')}
+        }).join('')}
                             </tbody>
                         </table>
                     </div>
@@ -147,9 +149,9 @@ App.Router.register('/patrol', async function () {
                 </div>
                 <div class="card-body">
                     ${PATROL_AREAS.map((area) => {
-                        const count = completedByArea[area];
-                        const areaProgress = Math.round((count / PATROL_ROUNDS_PER_SHIFT) * 100);
-                        return `
+            const count = completedByArea[area];
+            const areaProgress = Math.round((count / PATROL_ROUNDS_PER_SHIFT) * 100);
+            return `
                             <div style="margin-bottom:14px">
                                 <div class="flex-between" style="margin-bottom:6px">
                                     <div style="font-weight:600">${area}</div>
@@ -160,41 +162,30 @@ App.Router.register('/patrol', async function () {
                                 </div>
                             </div>
                         `;
-                    }).join('')}
+        }).join('')}
                 </div>
             </div>
 
             <div class="card mb-6">
                 <div class="card-header">
-                    <h3><span class="material-icons-round" style="vertical-align:middle;margin-right:8px">qr_code_scanner</span>Scan QR Checkpoint</h3>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        <button class="btn btn-outline btn-sm" id="btn-switch-scan-camera" onclick="App.Pages.Patrol.switchScanCamera()">
-                            <span class="material-icons-round">cameraswitch</span> Ke Kamera Depan
+                    <h3><span class="material-icons-round" style="vertical-align:middle;margin-right:8px">qr_code_scanner</span>Scan QR</h3>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <button class="btn btn-outline btn-sm hidden" id="btn-switch-scan-camera" onclick="App.Pages.Patrol.switchScanCamera()" title="Ganti kamera">
+                            <span class="material-icons-round">cameraswitch</span> Depan
                         </button>
                         <button class="btn btn-primary btn-sm" id="btn-start-scan" onclick="App.Pages.Patrol.toggleScanner()">
                             <span class="material-icons-round">camera_alt</span> Buka Kamera
                         </button>
                     </div>
                 </div>
-                <div class="card-body">
+                <div class="card-body hidden" id="qr-scan-panel">
                     <div id="qr-scanner-area" class="hidden">
                         <div class="qr-scanner-container">
                             <div id="qr-reader"></div>
                         </div>
-                        <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--gray-500)">
-                            Arahkan kamera ke QR code area patroli
+                        <p style="text-align:center;margin-top:8px;font-size:12px;color:var(--gray-500)">
+                            Arahkan kamera ke QR area patroli
                         </p>
-                    </div>
-                    <div id="qr-manual-area">
-                        <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px">
-                            Mode simulasi (sebelum alat tersedia): masukkan kode area manual.
-                        </p>
-                        <div style="display:flex;gap:12px;flex-wrap:wrap">
-                            <input type="text" class="form-input" id="manual-area-code" placeholder="Area Luar / Area Balkon / Area Smoking" style="flex:1;min-width:200px">
-                            <button class="btn btn-primary" onclick="App.Pages.Patrol.submitManual()">
-                                <span class="material-icons-round">send</span> Kirim
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -241,17 +232,19 @@ App.Router.register('/patrol', async function () {
                         <div class="table-container">
                             <table>
                                 <thead><tr>
-                                    <th>Waktu</th><th>Area</th><th>Barcode</th><th>Foto</th>
+                                    <th>Waktu</th><th>Area</th><th>Status QR</th><th>Foto</th>
                                 </tr></thead>
                                 <tbody>
-                                    ${todayPatrols.map((p) => `
+                                    ${todayPatrols.map((p) => {
+            const isVerified = (p.barcode || '').includes('|');
+            return `
                                         <tr>
                                             <td>${App.formatDateTime(p.captured_at || p.created_at)}</td>
                                             <td>${p.area || '-'}</td>
-                                            <td>${p.barcode || '-'}</td>
+                                            <td><span class="badge ${isVerified ? 'badge-green' : 'badge-gray'}">${isVerified ? 'Terverifikasi' : 'Manual'}</span></td>
                                             <td>${p.photo_count || 0} foto</td>
                                         </tr>
-                                    `).join('')}
+                                    `}).join('')}
                                 </tbody>
                             </table>
                         </div>
@@ -266,7 +259,8 @@ App.Router.register('/patrol', async function () {
         `;
         App.Pages.Patrol.updateScanSwitchButton();
     } catch (err) {
-        document.getElementById('patrol-loading').innerHTML = '<p>Gagal memuat data patroli</p>';
+        const loading = document.getElementById('patrol-loading');
+        if (loading) loading.innerHTML = '<p>Gagal memuat data patroli</p>';
     }
 });
 

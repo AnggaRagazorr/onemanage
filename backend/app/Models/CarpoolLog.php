@@ -21,6 +21,7 @@ class CarpoolLog extends Model
         'end_time',
         'last_km',
         'status',
+        'reject_reason',
         'approved_by',
         'approved_at',
         'trip_started_at',

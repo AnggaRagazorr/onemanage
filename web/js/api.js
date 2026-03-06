@@ -46,9 +46,26 @@ App.API_BASE = apiBaseOverride || defaultApiBase;
 App.API_TIMEOUT_MS = defaultTimeoutMs;
 
 App.Api = {
+    _isHandlingUnauthorized: false,
 
     createAbortController() {
         return new AbortController();
+    },
+
+    _handleUnauthorized() {
+        if (this._isHandlingUnauthorized) return;
+        this._isHandlingUnauthorized = true;
+        try {
+            if (App.Auth && typeof App.Auth.forceLogout === 'function') {
+                App.Auth.forceLogout();
+            } else {
+                location.hash = '#/login';
+            }
+        } finally {
+            setTimeout(() => {
+                this._isHandlingUnauthorized = false;
+            }, 500);
+        }
     },
 
     _headers(extra = {}) {
@@ -111,7 +128,10 @@ App.Api = {
     },
 
     async _handleJsonResponse(res) {
-        if (res.status === 401) { App.Auth.forceLogout(); throw new Error('Unauthorized'); }
+        if (res.status === 401) {
+            this._handleUnauthorized();
+            throw new Error('Unauthorized');
+        }
         if (!res.ok) {
             const text = await res.text();
             let msg = text;
@@ -183,7 +203,10 @@ App.Api = {
             method: 'GET',
             headers: { 'Accept': 'application/pdf' },
         }, options);
-        if (res.status === 401) { App.Auth.forceLogout(); throw new Error('Unauthorized'); }
+        if (res.status === 401) {
+            this._handleUnauthorized();
+            throw new Error('Unauthorized');
+        }
         if (!res.ok) {
             const text = await res.text();
             throw new Error(text || 'Gagal mengunduh file');
@@ -221,6 +244,24 @@ App.escapeHtml = function (value) {
 /* ── Toast helper ── */
 App.toast = function (message, type = 'info') {
     const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const dedupeMs = 3000;
+    const maxVisibleToasts = 4;
+    const key = `${type}|${String(message ?? '')}`;
+    App._toastRecent = App._toastRecent || {};
+    const now = Date.now();
+    const lastShownAt = Number(App._toastRecent[key] || 0);
+    if (lastShownAt > 0 && (now - lastShownAt) < dedupeMs) {
+        return;
+    }
+    App._toastRecent[key] = now;
+
+    const activeToasts = container.querySelectorAll('.toast');
+    if (activeToasts.length >= maxVisibleToasts) {
+        activeToasts[0].remove();
+    }
+
     const el = document.createElement('div');
     el.className = `toast ${type}`;
     el.innerHTML = `<span class="material-icons-round">${type === 'success' ? 'check_circle' :

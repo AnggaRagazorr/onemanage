@@ -48,8 +48,44 @@ class CarpoolVehicleController extends Controller
         ], 201);
     }
 
+    public function update(Request $request, CarpoolVehicle $vehicle)
+    {
+        if (!$vehicle->isAvailable()) {
+            return response()->json([
+                'message' => 'Kendaraan tidak bisa diedit saat sedang digunakan',
+            ], 422);
+        }
+
+        $request->validate([
+            'brand' => 'required|string',
+            'plate' => ['required', 'string', \Illuminate\Validation\Rule::unique('carpool_vehicles', 'plate')->ignore($vehicle->id)],
+            'current_km' => 'nullable|numeric|min:0',
+        ]);
+
+        $vehicle->update([
+            'brand' => $request->string('brand'),
+            'plate' => $request->string('plate'),
+            'current_km' => $request->input('current_km', $vehicle->current_km),
+        ]);
+
+        return response()->json([
+            'message' => 'Kendaraan diperbarui',
+            'data' => $vehicle->fresh(),
+        ]);
+    }
+
     public function destroy(CarpoolVehicle $vehicle)
     {
+        $hasActiveTrip = \App\Models\CarpoolLog::where('vehicle_id', $vehicle->id)
+            ->whereIn('status', ['approved', 'confirmed', 'in_use', 'pending_key'])
+            ->exists();
+
+        if ($hasActiveTrip || !$vehicle->isAvailable()) {
+            return response()->json([
+                'message' => 'Kendaraan tidak bisa dihapus karena masih ada trip aktif',
+            ], 422);
+        }
+
         $vehicle->delete();
 
         return response()->json([

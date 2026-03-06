@@ -151,8 +151,22 @@ App.Router = {
             return;
         }
 
+        if (path !== '/login' && App.Auth.isLoggedIn()) {
+            const sessionOk = await App.Auth.validateSession();
+            if (!sessionOk) {
+                if (App.Push?.stop) App.Push.stop();
+                location.hash = '#/login';
+                return;
+            }
+        }
+
         // Already logged in — skip login page
         if (path === '/login' && App.Auth.isLoggedIn()) {
+            const sessionOk = await App.Auth.validateSession();
+            if (!sessionOk) {
+                if (App.Push?.stop) App.Push.stop();
+                return;
+            }
             const role = App.Auth.getRole();
             if (App.Push?.ensureStarted) App.Push.ensureStarted();
             location.hash = '#' + this._getDefaultDashboard(role);
@@ -302,7 +316,7 @@ App.renderLayout = function (pageTitle, subtitle, bodyHtml, navPage) {
                     `).join('')}
                 </nav>
                 <div class="sidebar-footer">
-                    <button class="btn-logout" onclick="App.Auth.logout(); location.hash='#/login';">
+                    <button class="btn-logout" onclick="App.Auth.logout();">
                         <span class="material-icons-round">logout</span>
                         Keluar
                     </button>

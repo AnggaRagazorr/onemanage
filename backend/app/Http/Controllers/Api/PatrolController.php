@@ -49,39 +49,40 @@ class PatrolController extends Controller
             'photos.*' => 'image|max:10240',
         ]);
 
-        // --- QR Token Validation (pipe-separated format) ---
+        // --- QR Token Validation (Server-generated format) ---
         $barcode = $request->string('barcode')->toString();
-        $parts = explode('|', $barcode);
+        $parts = explode(':', $barcode);
 
-        if (count($parts) === 3) {
-            // Format: NamaArea|UnixTimestamp|HmacSignature
-            [$qrArea, $qrTimestamp, $qrSignature] = $parts;
-            $secret = config('app.qr_patrol_secret', '');
+        if (count($parts) === 3 && $parts[0] === 'TOKEN') {
+            // Format: TOKEN:AreaName:RandomString
+            $tokenRecord = \App\Models\PatrolToken::where('token', $barcode)->first();
 
-            if (empty($secret)) {
+            if (!$tokenRecord) {
                 return response()->json([
-                    'message' => 'Konfigurasi QR belum di-set di server (QR_PATROL_SECRET).',
-                ], 500);
-            }
-
-            // Re-compute HMAC and compare
-            $expectedSignature = hash_hmac('sha256', "{$qrArea}|{$qrTimestamp}", $secret);
-            if (!hash_equals($expectedSignature, $qrSignature)) {
-                return response()->json([
-                    'message' => 'QR tidak valid — signature tidak cocok.',
+                    'message' => 'QR tidak valid atau palsu.',
                 ], 422);
             }
 
-            // Check expiry (30 seconds tolerance)
-            $now = time();
-            $tokenTime = (int) $qrTimestamp;
-            if (abs($now - $tokenTime) > 30) {
+            if ($tokenRecord->used) {
                 return response()->json([
-                    'message' => 'QR sudah expired. Scan ulang QR terbaru dari alat.',
+                    'message' => 'QR sudah pernah digunakan. Tekan tombol pada alat untuk QR baru.',
                 ], 422);
             }
+
+            if (now()->greaterThan($tokenRecord->expires_at)) {
+                return response()->json([
+                    'message' => 'QR sudah expired (lebih dari 5 menit). Tekan tombol untuk QR baru.',
+                ], 422);
+            }
+
+            // Mark token as used
+            $tokenRecord->update(['used' => true]);
+        } else {
+            // Tolak format QR yang bukan TOKEN resmi
+            return response()->json([
+                'message' => 'Format QR tidak valid. Gunakan alat scanner resmi.',
+            ], 422);
         }
-        // If not pipe-separated (manual input / legacy), skip token validation
 
         $paths = [];
         foreach ($request->file('photos', []) as $photo) {

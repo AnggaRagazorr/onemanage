@@ -12,10 +12,24 @@ class AdminUserController extends Controller
 {
     public function index(Request $request)
     {
-        return User::query()
+        $query = User::query()
             ->select('id', 'name', 'username', 'email', 'role')
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
+
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->string('role'));
+        }
+
+        return $query->paginate($request->integer('per_page', 50));
     }
 
     public function store(Request $request)
@@ -91,6 +105,12 @@ class AdminUserController extends Controller
 
     public function destroy(Request $request, User $user)
     {
+        if ($user->id === $request->user()->id) {
+            return response()->json([
+                'message' => 'Tidak bisa menghapus akun sendiri',
+            ], 422);
+        }
+
         $user->delete();
 
         return response()->json([

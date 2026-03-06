@@ -81,15 +81,17 @@ class CarpoolNotificationService
         ]);
     }
 
-    public function onDriverRejected(CarpoolLog $log): void
+    public function onDriverRejected(CarpoolLog $log, string $rejectReason = ''): void
     {
+        $reasonText = $rejectReason ? " Alasan: \"{$rejectReason}\"" : '';
+
         $this->notifier->notifyRole('admin', [
             'event_key' => "carpool.log.{$log->id}.driver.rejected.admin",
             'type' => 'warning',
             'title' => 'Driver Menolak Tugas',
-            'body' => sprintf('Trip ke %s dikembalikan ke antrian approval.', $log->destination ?: '-'),
+            'body' => sprintf('Trip ke %s dikembalikan ke antrian approval.%s', $log->destination ?: '-', $reasonText),
             'action_url' => '/admin/carpool',
-            'payload' => $this->payload($log),
+            'payload' => array_merge($this->payload($log), ['reject_reason' => $rejectReason]),
         ]);
 
         $requesterId = (int) ($log->user_id ?? 0);
@@ -98,9 +100,9 @@ class CarpoolNotificationService
                 'event_key' => "carpool.log.{$log->id}.driver.rejected.user",
                 'type' => 'warning',
                 'title' => 'Request Perlu Penjadwalan Ulang',
-                'body' => sprintf('Driver menolak trip ke %s. Admin akan menjadwalkan ulang.', $log->destination ?: '-'),
+                'body' => sprintf('Driver menolak trip ke %s. Admin akan menjadwalkan ulang.%s', $log->destination ?: '-', $reasonText),
                 'action_url' => $this->pathByRole($log->user?->role),
-                'payload' => $this->payload($log),
+                'payload' => array_merge($this->payload($log), ['reject_reason' => $rejectReason]),
             ]);
         }
     }

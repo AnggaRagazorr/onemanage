@@ -61,7 +61,7 @@ class CarpoolVehicle extends Model
     public function activeLog()
     {
         return $this->hasOne(CarpoolLog::class, 'vehicle_id')
-            ->whereIn('status', ['approved', 'in_use', 'pending_key'])
+            ->whereIn('status', ['approved', 'confirmed', 'in_use', 'pending_key'])
             ->latest();
     }
 }

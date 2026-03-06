@@ -27,9 +27,12 @@ App.Pages.CarpoolSecurity = {
                 logsQuery.end_date = this.state.filter_date;
             }
 
-            const [vehiclesRes, logsRes] = await Promise.all([
+            // Fetch date-filtered logs AND all active trips (regardless of date)
+            const [vehiclesRes, logsRes, activeConfirmedRes, activePendingKeyRes] = await Promise.all([
                 App.Api.get('/carpool/vehicles').catch(() => []),
                 App.Api.get('/carpool/logs', logsQuery).catch(() => ({ data: [] })),
+                App.Api.get('/carpool/logs', { status: 'confirmed' }).catch(() => ({ data: [] })),
+                App.Api.get('/carpool/logs', { status: 'pending_key' }).catch(() => ({ data: [] })),
             ]);
 
             const vehicles = carpoolParseList(vehiclesRes);
@@ -47,9 +50,14 @@ App.Pages.CarpoolSecurity = {
             if (!content) return;
             content.classList.remove('hidden');
 
-            // New Workflow Filter
-            const readyToDepart = logs.filter(l => l.status === 'confirmed');
-            const pendingKey = logs.filter(l => l.status === 'pending_key');
+            // Active trips — fetched without date filter so they always appear
+            const allConfirmed = carpoolParseList(activeConfirmedRes);
+            const allPendingKey = carpoolParseList(activePendingKeyRes);
+
+            // Deduplicate: merge active trips that might already be in today's logs
+            const logIds = new Set(logs.map(l => l.id));
+            const readyToDepart = allConfirmed;
+            const pendingKey = allPendingKey;
 
             const availableV = vehicles.filter(v => v.status === 'available');
             const inUseV = vehicles.filter(v => v.status === 'in_use');
@@ -67,10 +75,10 @@ App.Pages.CarpoolSecurity = {
                             <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;padding:20px;margin-bottom:12px">
                                 <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:12px">
                                     <div>
-                                        <span class="badge badge-gray mb-2">Driver: ${trip.driver_display || '-'}</span>
-                                        <h4 style="font-size:16px;font-weight:700">${trip.vehicle_display}</h4>
+                                        <span class="badge badge-gray mb-2">Driver: ${App.escapeHtml(trip.driver_display || '-')}</span>
+                                        <h4 style="font-size:16px;font-weight:700">${App.escapeHtml(trip.vehicle_display || '-')}</h4>
                                         <p style="font-size:13px;color:var(--gray-500)">
-                                            Tujuan: ${trip.destination} &bull; ${App.formatDate(trip.date)}
+                                            Tujuan: ${App.escapeHtml(trip.destination || '-')} &bull; ${App.formatDate(trip.date)}
                                         </p>
                                     </div>
                                     <button class="btn btn-primary btn-sm" onclick="App.Pages.CarpoolSecurity.checkOut(${trip.id})">
@@ -95,10 +103,10 @@ App.Pages.CarpoolSecurity = {
                             <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;padding:20px;margin-bottom:12px">
                                 <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:12px">
                                     <div>
-                                        <span class="badge badge-gray mb-2">Driver: ${trip.driver_display || '-'}</span>
-                                        <h4 style="font-size:15px;font-weight:700">${trip.vehicle_display}</h4>
+                                        <span class="badge badge-gray mb-2">Driver: ${App.escapeHtml(trip.driver_display || '-')}</span>
+                                        <h4 style="font-size:15px;font-weight:700">${App.escapeHtml(trip.vehicle_display || '-')}</h4>
                                         <p style="font-size:13px;color:var(--gray-500)">
-                                            Tujuan: ${trip.destination} &bull; Last KM: ${trip.last_km || '-'}
+                                            Tujuan: ${App.escapeHtml(trip.destination || '-')} &bull; Last KM: ${App.escapeHtml(String(trip.last_km || '-'))}
                                         </p>
                                     </div>
                                     <button class="btn btn-warning btn-sm" onclick="App.Pages.CarpoolSecurity.validateKey(${trip.id})">
@@ -166,7 +174,7 @@ App.Pages.CarpoolSecurity = {
                                     <tbody>
                                         ${recentLogs.map((l, idx) => {
                 const badge = App.Pages.CarpoolSecurity.statusBadge(l.status);
-                return `<tr style="cursor:pointer" onclick="App.Pages.CarpoolSecurity.showLogDetail(${idx})"><td>${App.formatDate(l.date)}</td><td>${l.vehicle_display}</td><td>${badge}</td></tr>`;
+                return `<tr style="cursor:pointer" onclick="App.Pages.CarpoolSecurity.showLogDetail(${idx})"><td>${App.formatDate(l.date)}</td><td>${App.escapeHtml(l.vehicle_display || '-')}</td><td>${badge}</td></tr>`;
             }).join('')}
                                     </tbody>
                                 </table>
@@ -209,20 +217,20 @@ App.Pages.CarpoolSecurity = {
             ? departureTimeRaw
             : '-';
         const detailRows = [
-            ['Tanggal Trip', App.formatDate(log.date)],
-            ['Kendaraan', log.vehicle_display || '-'],
+            ['Tanggal Trip', App.escapeHtml(App.formatDate(log.date))],
+            ['Kendaraan', App.escapeHtml(log.vehicle_display || '-')],
             ['Status', `<span class="badge ${status.cls}">${status.lbl}</span>`],
-            ['Pemohon', log.user_name || '-'],
-            ['Penumpang', log.passenger_names || '-'],
-            ['Driver', log.driver_display || '-'],
-            ['Tujuan', log.destination || '-'],
-            ['Jam Berangkat', departureTime],
-            ['Trip Mulai', App.formatDateTime(log.trip_started_at)],
-            ['Trip Selesai', App.formatDateTime(log.trip_finished_at)],
-            ['Kunci Kembali', App.formatDateTime(log.key_returned_at)],
-            ['KM Terakhir', log.last_km || '-'],
-            ['Approved By', log.approver_name || '-'],
-            ['Validator Kunci', log.validator_name || '-']
+            ['Pemohon', App.escapeHtml(log.user_name || '-')],
+            ['Penumpang', App.escapeHtml(log.passenger_names || '-')],
+            ['Driver', App.escapeHtml(log.driver_display || '-')],
+            ['Tujuan', App.escapeHtml(log.destination || '-')],
+            ['Jam Berangkat', App.escapeHtml(departureTime)],
+            ['Trip Mulai', App.escapeHtml(App.formatDateTime(log.trip_started_at))],
+            ['Trip Selesai', App.escapeHtml(App.formatDateTime(log.trip_finished_at))],
+            ['Kunci Kembali', App.escapeHtml(App.formatDateTime(log.key_returned_at))],
+            ['KM Terakhir', App.escapeHtml(String(log.last_km || '-'))],
+            ['Approved By', App.escapeHtml(log.approver_name || '-')],
+            ['Validator Kunci', App.escapeHtml(log.validator_name || '-')]
         ];
 
         App.openModal(`

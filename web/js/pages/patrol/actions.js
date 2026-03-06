@@ -13,17 +13,20 @@ App.Pages.Patrol = {
 
     async toggleScanner() {
         const area = document.getElementById('qr-scanner-area');
+        const panel = document.getElementById('qr-scan-panel');
         const btn = document.getElementById('btn-start-scan');
 
         if (this.scanning) {
             await this.stopScanner();
             area.classList.add('hidden');
+            if (panel) panel.classList.add('hidden');
             btn.innerHTML = '<span class="material-icons-round">camera_alt</span> Buka Kamera';
             this.scanning = false;
             this.updateScanSwitchButton();
             return;
         }
 
+        if (panel) panel.classList.remove('hidden');
         area.classList.remove('hidden');
         btn.innerHTML = '<span class="material-icons-round">close</span> Tutup Kamera';
         this.scanning = true;
@@ -33,6 +36,7 @@ App.Pages.Patrol = {
         if (!window.isSecureContext && !isLocalhost) {
             App.toast('Kamera di HP butuh HTTPS. Buka via URL https://', 'warning');
             area.classList.add('hidden');
+            if (panel) panel.classList.add('hidden');
             btn.innerHTML = '<span class="material-icons-round">camera_alt</span> Buka Kamera';
             this.scanning = false;
             this.updateScanSwitchButton();
@@ -42,9 +46,10 @@ App.Pages.Patrol = {
         try {
             await this.startScannerSession();
         } catch (err) {
-            const msg = err?.message || 'Gagal membuka kamera. Gunakan input manual.';
+            const msg = err?.message || 'Gagal membuka kamera.';
             App.toast(msg, 'warning');
             area.classList.add('hidden');
+            if (panel) panel.classList.add('hidden');
             btn.innerHTML = '<span class="material-icons-round">camera_alt</span> Buka Kamera';
             this.scanning = false;
             this.updateScanSwitchButton();
@@ -68,7 +73,8 @@ App.Pages.Patrol = {
     updateScanSwitchButton() {
         const btn = document.getElementById('btn-switch-scan-camera');
         if (!btn) return;
-        const targetLabel = this.scanCameraFacing === 'environment' ? 'Ke Kamera Depan' : 'Ke Kamera Belakang';
+        btn.classList.toggle('hidden', !this.scanning);
+        const targetLabel = this.scanCameraFacing === 'environment' ? 'Depan' : 'Belakang';
         btn.innerHTML = `<span class="material-icons-round">cameraswitch</span> ${targetLabel}`;
     },
 
@@ -124,6 +130,8 @@ App.Pages.Patrol = {
 
         const area = document.getElementById('qr-scanner-area');
         if (area) area.classList.add('hidden');
+        const panel = document.getElementById('qr-scan-panel');
+        if (panel) panel.classList.add('hidden');
 
         const btn = document.getElementById('btn-start-scan');
         if (btn) btn.innerHTML = '<span class="material-icons-round">camera_alt</span> Buka Kamera';
@@ -139,20 +147,6 @@ App.Pages.Patrol = {
         // Store the FULL raw QR string so backend can validate timestamp + HMAC
         this.pendingBarcode = code;
         await this.openCaptureModal();
-    },
-
-    async submitManual() {
-        const code = document.getElementById('manual-area-code')?.value?.trim();
-        if (!code) {
-            App.toast('Masukkan kode area', 'warning');
-            return;
-        }
-        const normalizedArea = resolvePatrolAreaFromCode(code);
-        if (!normalizedArea) {
-            App.toast('Area harus: Area Luar, Area Balkon, atau Area Smoking', 'warning');
-            return;
-        }
-        await this.handleScan(normalizedArea);
     },
 
     async openCaptureModal() {

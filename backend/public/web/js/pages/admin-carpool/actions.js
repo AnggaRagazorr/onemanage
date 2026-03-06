@@ -174,46 +174,6 @@ App.Pages.AdminCarpool = {
             </div>
             ` : ''}
 
-            <!-- Create Trip (Admin auto-approved) -->
-            <div class="card mb-6">
-                <div class="card-header">
-                    <h3><span class="material-icons-round" style="vertical-align:middle;margin-right:8px">add_circle</span>Buat Trip Baru (Auto-Approve)</h3>
-                </div>
-                <div class="card-body">
-                    <form id="admin-trip-form">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Kendaraan</label>
-                                <select class="form-select" id="at-vehicle" required>
-                                    <option value="">Pilih kendaraan...</option>
-                                    ${availableV.map(v => `<option value="${adminCarpoolToId(v.id)}">${adminCarpoolEsc(v.plate)} - ${adminCarpoolEsc(v.brand)}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Driver</label>
-                                <select class="form-select" id="at-driver" required>
-                                    <option value="">Pilih driver...</option>
-                                    ${availableDrivers.map(d => `<option value="${adminCarpoolToId(d.id)}">${adminCarpoolEsc(d.name)} (${adminCarpoolEsc(d.nip)})</option>`).join('')}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Tanggal</label>
-                                <input type="date" class="form-input" id="at-date" value="${new Date().toISOString().split('T')[0]}" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Tujuan</label>
-                                <input type="text" class="form-input" id="at-dest" placeholder="Tujuan" required>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary" ${availableV.length === 0 ? 'disabled' : ''}>
-                            <span class="material-icons-round">send</span> Buat Trip
-                        </button>
-                    </form>
-                </div>
-            </div>
-
             <!-- Kendaraan & Driver Management (Collapsed by default or Separate tabs? Keep simple for now) -->
             <div class="grid-2 mb-6">
                 <!-- Kendaraan Section -->
@@ -310,22 +270,6 @@ App.Pages.AdminCarpool = {
             });
         });
 
-        // Handle Trip Creation Logic (re-attach listener)
-        document.getElementById('admin-trip-form')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const data = {
-                vehicle_id: document.getElementById('at-vehicle').value,
-                driver_id: document.getElementById('at-driver').value,
-                date: document.getElementById('at-date').value,
-                destination: document.getElementById('at-dest').value.trim(),
-            };
-            if (!data.vehicle_id || !data.driver_id || !data.destination) { App.toast('Kendaraan, Driver, dan tujuan wajib diisi', 'warning'); return; }
-            try {
-                await App.Api.post('/carpool/logs', data);
-                App.toast('Trip berhasil dibuat (auto-approved)!', 'success');
-                this.loadData(); // Reload data
-            } catch (err) { App.toast('Gagal: ' + err.message, 'error'); }
-        });
     },
 
     exportData() {
@@ -359,7 +303,8 @@ App.Pages.AdminCarpool = {
             confirmed: ['badge-blue', 'Confirmed'],
             in_use: ['badge-blue', 'In Use'],
             pending_key: ['badge-yellow', 'Pending Key'],
-            completed: ['badge-green', 'Completed']
+            completed: ['badge-green', 'Completed'],
+            cancelled: ['badge-red', 'Cancelled']
         };
         const [cls, lbl] = map[s] || ['badge-gray', s || '-'];
         return { cls, lbl };
@@ -401,6 +346,11 @@ App.Pages.AdminCarpool = {
             ['Validator Kunci', log.validator_name || '-', false]
         ];
 
+        // Add reject reason if present
+        if (log.reject_reason) {
+            details.push(['Alasan Penolakan Driver', `<span style="color:var(--danger);font-weight:600">${adminCarpoolEsc(log.reject_reason)}</span>`, true]);
+        }
+
         App.openModal(`
             <div class="modal-header">
                 <h3>Detail Log Trip</h3>
@@ -424,8 +374,8 @@ App.Pages.AdminCarpool = {
 
     async approve(logId) {
         if (!confirm('Approve trip ini?')) return;
-        const vehicle_id = document.getElementById(`pa-vehicle-${logId}`)?.value;
-        const driver_id = document.getElementById(`pa-driver-${logId}`)?.value;
+        const vehicle_id = Number(document.getElementById(`pa-vehicle-${logId}`)?.value);
+        const driver_id = Number(document.getElementById(`pa-driver-${logId}`)?.value);
         if (!vehicle_id || !driver_id) {
             App.toast('Pilih kendaraan dan driver terlebih dahulu', 'warning');
             return;
@@ -464,7 +414,7 @@ App.Pages.AdminCarpool = {
 
     addDriverModal() {
         App.openModal(`
-            <div class="modal-header"><h3>Tambah Driver</h3><button class="modal-close" onclick="App.closeModal()"><span class="material-icons-round">close</span></button></div>
+            < div class= "modal-header" ><h3>Tambah Driver</h3><button class="modal-close" onclick="App.closeModal()"><span class="material-icons-round">close</span></button></div >
             <div class="modal-body">
                 <div class="form-group"><label class="form-label">Nama</label><input type="text" class="form-input" id="d-name" placeholder="Nama driver" required></div>
                 <div class="form-group"><label class="form-label">NIP</label><input type="text" class="form-input" id="d-nip" placeholder="NIP driver" required></div>

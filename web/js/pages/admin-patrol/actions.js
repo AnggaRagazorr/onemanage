@@ -194,6 +194,9 @@ App.Pages.AdminPatrol = {
                         <button type="submit" class="btn btn-primary" style="height:42px">
                             <span class="material-icons-round">filter_list</span> Filter
                         </button>
+                        <button type="button" class="btn btn-outline" style="height:42px" onclick="App.Pages.AdminPatrol.resetToToday()">
+                            <span class="material-icons-round">today</span> Hari Ini
+                        </button>
                         <button type="button" class="btn btn-outline" style="height:42px" onclick="App.Pages.AdminPatrol.exportData()">
                             <span class="material-icons-round">picture_as_pdf</span> Export PDF
                         </button>
@@ -353,6 +356,11 @@ App.Pages.AdminPatrol = {
             return;
         }
         this.viewPhotos(record.photo_urls || [], record.area || '-');
+    },
+
+    resetToToday() {
+        const today = new Date().toISOString().slice(0, 10);
+        this.loadData({ start_date: today, end_date: today, filter_date: today });
     },
 
     exportData() {

@@ -21,38 +21,17 @@ App.PatrolCore.resolvePatrolAreaFromCode = function (rawCode) {
     const code = (rawCode || '').toString().trim();
     if (!code) return '';
 
-    // --- New pipe-separated format: NamaArea|Timestamp|Signature ---
-    if (code.includes('|')) {
-        const areaSegment = code.split('|')[0].trim();
-        const normalized = App.PatrolCore.normalizePatrolArea(areaSegment);
-        if (App.PatrolCore.PATROL_AREAS.includes(normalized)) return normalized;
-        // Also try compact matching on the area segment
-        const compact = areaSegment.toLowerCase().replace(/[^a-z]/g, '');
-        if (compact.includes('arealuar') || compact.includes('luar')) return 'Area Luar';
-        if (compact.includes('areabalkon') || compact.includes('balkon')) return 'Area Balkon';
-        if (compact.includes('areasmoking') || compact.includes('smoking')) return 'Area Smoking';
-        return '';
-    }
-
-    // --- Legacy JSON format ---
-    try {
-        const parsed = JSON.parse(code);
-        if (parsed && parsed.area) {
-            const normalized = App.PatrolCore.normalizePatrolArea(parsed.area);
+    // --- Server-generated token format: TOKEN:AreaName:RandomString ---
+    if (code.startsWith('TOKEN:')) {
+        const parts = code.split(':');
+        if (parts.length === 3) {
+            const areaSegment = parts[1].trim();
+            const normalized = App.PatrolCore.normalizePatrolArea(areaSegment);
             if (App.PatrolCore.PATROL_AREAS.includes(normalized)) return normalized;
         }
-    } catch (e) {
-        // Not JSON, continue with plain text parsing.
     }
 
-    // --- Plain text fallback ---
-    const normalized = App.PatrolCore.normalizePatrolArea(code);
-    if (App.PatrolCore.PATROL_AREAS.includes(normalized)) return normalized;
-
-    const compact = code.toLowerCase().replace(/[^a-z]/g, '');
-    if (compact.includes('arealuar') || compact.includes('luar')) return 'Area Luar';
-    if (compact.includes('areabalkon') || compact.includes('balkon')) return 'Area Balkon';
-    if (compact.includes('areasmoking') || compact.includes('smoking')) return 'Area Smoking';
+    // Tolak semua format lain (mencegah bypass isi QR "Area Luar" biasa)
     return '';
 };
 

@@ -64,6 +64,16 @@ class CarpoolDriverController extends Controller
 
     public function destroy(CarpoolDriver $driver)
     {
+        $hasActiveTrip = \App\Models\CarpoolLog::where('driver_id', $driver->id)
+            ->whereIn('status', ['approved', 'confirmed', 'in_use', 'pending_key'])
+            ->exists();
+
+        if ($hasActiveTrip) {
+            return response()->json([
+                'message' => 'Driver tidak bisa dihapus karena masih ada trip aktif',
+            ], 422);
+        }
+
         $driver->delete();
 
         return response()->json([
