@@ -76,7 +76,7 @@ App.Pages.AdminUsers = {
                                                     <button class="btn btn-outline btn-sm" onclick="App.Pages.AdminUsers.editUserModal(${u.id}, '${(u.name || '').replace(/'/g, "\\'")}', '${(u.username || '').replace(/'/g, "\\'")}', '${(u.email || '').replace(/'/g, "\\'")}', '${u.role || ''}')">
                                                         <span class="material-icons-round">edit</span>
                                                     </button>
-                                                    <button class="btn btn-danger btn-sm" onclick="App.Pages.AdminUsers.deleteUser(${u.id})">
+                                                    <button class="btn btn-danger btn-sm" onclick="App.Pages.AdminUsers.deleteUser(${u.id}, '${(u.name || '').replace(/'/g, "\\'")}')">
                                                         <span class="material-icons-round">delete</span>
                                                     </button>
                                                 </div>
@@ -208,14 +208,45 @@ App.Pages.AdminUsers = {
         }
     },
 
-    async deleteUser(id) {
-        if (!confirm('Hapus user ini?')) return;
+    deleteUser(id, name) {
+        App.openModal(`
+            <div class="modal-header">
+                <h3>Hapus User</h3>
+                <button class="modal-close" onclick="App.closeModal()"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div style="display:flex;align-items:flex-start;gap:16px">
+                    <div style="width:48px;height:48px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <span class="material-icons-round" style="color:#dc2626;font-size:24px">warning</span>
+                    </div>
+                    <div>
+                        <p style="font-weight:600;margin:0 0 6px">Yakin ingin menghapus user ini?</p>
+                        <p style="color:var(--text-secondary);margin:0;font-size:0.9rem">
+                            User <strong>${name || 'ini'}</strong> akan dihapus secara permanen dan tidak dapat dikembalikan.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="App.closeModal()">Batal</button>
+                <button class="btn btn-danger" id="confirm-delete-btn" onclick="App.Pages.AdminUsers.confirmDelete(${id})">
+                    <span class="material-icons-round" style="font-size:16px">delete</span> Hapus
+                </button>
+            </div>
+        `);
+    },
+
+    async confirmDelete(id) {
+        const btn = document.getElementById('confirm-delete-btn');
+        if (btn) { btn.disabled = true; btn.innerHTML = 'Menghapus...'; }
         try {
             await App.Api.delete('/admin/users/' + id);
-            App.toast('User dihapus', 'success');
+            App.closeModal();
+            App.toast('User berhasil dihapus', 'success');
             App.Router.navigate('/admin/users');
         } catch (e) {
             App.toast('Gagal: ' + e.message, 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-icons-round" style="font-size:16px">delete</span> Hapus'; }
         }
     },
 };

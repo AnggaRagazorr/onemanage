@@ -85,7 +85,7 @@ App.Pages.AdminCarpool = {
         const pendingKeyV = vehicles.filter(v => v.status === 'pending_key');
         const pendingApproval = logs.filter(l => l.status === 'requested');
 
-        // Filter drivers: use is_busy flag from backend (globally checks active trips)
+        // Filter drivers
         const availableDrivers = drivers.filter(d => !d.is_busy);
 
         content.innerHTML = `
@@ -414,7 +414,7 @@ App.Pages.AdminCarpool = {
 
     addDriverModal() {
         App.openModal(`
-            < div class= "modal-header" ><h3>Tambah Driver</h3><button class="modal-close" onclick="App.closeModal()"><span class="material-icons-round">close</span></button></div >
+            <div class="modal-header"><h3>Tambah Driver</h3><button class="modal-close" onclick="App.closeModal()"><span class="material-icons-round">close</span></button></div>
             <div class="modal-body">
                 <div class="form-group"><label class="form-label">Nama</label><input type="text" class="form-input" id="d-name" placeholder="Nama driver" required></div>
                 <div class="form-group"><label class="form-label">NIP</label><input type="text" class="form-input" id="d-nip" placeholder="NIP driver" required></div>

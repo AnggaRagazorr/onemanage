@@ -110,12 +110,33 @@ App.Pages.AdminPatrol = {
                 return a._order - b._order;
             });
 
-            const chunkSize = 3; // 1 sesi = 3 area (luar/balkon/smoking)
-            const totalSessions = Math.ceil(ordered.length / chunkSize);
+            const sessionsRaw = [];
+            let currentSessionRecords = [];
 
-            for (let i = 0; i < totalSessions; i += 1) {
-                const records = ordered.slice(i * chunkSize, (i + 1) * chunkSize);
-                if (records.length === 0) continue;
+            for (const record of ordered) {
+                if (currentSessionRecords.length === 0) {
+                    currentSessionRecords.push(record);
+                } else {
+                    const firstRecordTs = currentSessionRecords[0]._ts ? currentSessionRecords[0]._ts.getTime() : 0;
+                    const recordTs = record._ts ? record._ts.getTime() : 0;
+                    const timeGapMins = (recordTs - firstRecordTs) / (1000 * 60);
+
+                    const areaAlreadyScanned = currentSessionRecords.some(r => r.area === record.area);
+
+                    if (timeGapMins > 60 || areaAlreadyScanned) {
+                        // Start a new session
+                        sessionsRaw.push([...currentSessionRecords]);
+                        currentSessionRecords = [record];
+                    } else {
+                        currentSessionRecords.push(record);
+                    }
+                }
+            }
+            if (currentSessionRecords.length > 0) {
+                sessionsRaw.push(currentSessionRecords);
+            }
+
+            sessionsRaw.forEach((records, i) => {
                 const startAt = records[0]._ts || null;
                 const endAt = records[records.length - 1]._ts || null;
                 const sessionAt = endAt || startAt;
@@ -132,7 +153,7 @@ App.Pages.AdminPatrol = {
                 };
                 session.conditions = this.getSessionConditions(conditions, session);
                 rows.push(session);
-            }
+            });
         });
 
         rows.sort((a, b) => {
@@ -279,7 +300,7 @@ App.Pages.AdminPatrol = {
                     <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
                         <div>
                             <div style="font-weight:700">${esc(r.area || '-')}</div>
-                            <div style="font-size:12px;color:var(--gray-500)">Barcode: ${esc(r.barcode || '-')}</div>
+                            <div style="font-size:12px;color:var(--gray-500)">Status QR: <span style="font-weight:600;color:${r.barcode ? 'var(--success)' : 'var(--gray-600)'}">${r.barcode ? '✅ Terverifikasi' : 'Manual'}</span></div>
                             <div style="font-size:12px;color:var(--gray-500)">Waktu: ${esc(App.formatDateTime(r.captured_at || r.created_at))}</div>
                         </div>
                         <button class="btn btn-sm btn-outline" onclick="App.Pages.AdminPatrol.viewSessionAreaPhotos(${idx})" ${photoCount <= 0 ? 'disabled' : ''}>

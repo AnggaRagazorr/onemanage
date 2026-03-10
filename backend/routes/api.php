@@ -14,7 +14,6 @@ use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\UserNotificationController;
 use App\Http\Controllers\Api\SecurityStatsController;
-
 use App\Http\Controllers\Api\PatrolTokenController;
 
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -35,24 +34,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dokumen', [DokumenMasukController::class, 'index']);
     Route::post('/dokumen', [DokumenMasukController::class, 'store']);
 
-    // Carpool — vehicles & drivers (CRUD)
+    // Carpool - vehicles & drivers (read endpoints)
     Route::get('/carpool/vehicles', [CarpoolVehicleController::class, 'index']);
-    Route::post('/carpool/vehicles', [CarpoolVehicleController::class, 'store']);
-    Route::put('/carpool/vehicles/{vehicle}', [CarpoolVehicleController::class, 'update']);
-    Route::delete('/carpool/vehicles/{vehicle}', [CarpoolVehicleController::class, 'destroy']);
     Route::get('/carpool/drivers', [CarpoolDriverController::class, 'index']);
-    Route::post('/carpool/drivers', [CarpoolDriverController::class, 'store']);
-    Route::delete('/carpool/drivers/{driver}', [CarpoolDriverController::class, 'destroy']);
 
-    // Carpool — trip workflow
+    // Carpool - trip workflow
     Route::get('/carpool/logs', [CarpoolLogController::class, 'index']);
     Route::post('/carpool/logs', [CarpoolLogController::class, 'store']);
-    Route::post('/carpool/logs/{log}/approve', [CarpoolLogController::class, 'approve']);
     Route::post('/carpool/logs/{log}/respond', [CarpoolLogController::class, 'driverConfirm']);
     Route::post('/carpool/logs/{log}/trip-start', [CarpoolLogController::class, 'tripStart']);
     Route::post('/carpool/logs/{log}/trip-finish', [CarpoolLogController::class, 'tripFinish']);
     Route::post('/carpool/logs/{log}/validate-key', [CarpoolLogController::class, 'validateKey']);
-    Route::post('/carpool/logs/{log}/cancel', [CarpoolLogController::class, 'cancel']);
 
     // KM Audit
     Route::get('/km-audits', [KmAuditController::class, 'index']);
@@ -70,7 +62,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/shifts/clock-out', [\App\Http\Controllers\Api\ShiftController::class, 'clockOut']);
 
     Route::middleware('role.admin')->group(function () {
-        // Admin — Active Shifts
+        // Admin only - Carpool master data and approvals
+        Route::post('/carpool/vehicles', [CarpoolVehicleController::class, 'store']);
+        Route::put('/carpool/vehicles/{vehicle}', [CarpoolVehicleController::class, 'update']);
+        Route::delete('/carpool/vehicles/{vehicle}', [CarpoolVehicleController::class, 'destroy']);
+        Route::post('/carpool/drivers', [CarpoolDriverController::class, 'store']);
+        Route::delete('/carpool/drivers/{driver}', [CarpoolDriverController::class, 'destroy']);
+        Route::post('/carpool/logs/{log}/approve', [CarpoolLogController::class, 'approve']);
+        Route::post('/carpool/logs/{log}/cancel', [CarpoolLogController::class, 'cancel']);
+
+        // Admin - Active Shifts
         Route::get('/admin/shifts/active', [\App\Http\Controllers\Api\ShiftController::class, 'activeShifts']);
         Route::get('/admin/shifts/history', [\App\Http\Controllers\Api\ShiftController::class, 'history']);
 

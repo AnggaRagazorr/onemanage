@@ -100,7 +100,9 @@ App.Push = {
     requestPermissionIfNeeded() {
         if (!('Notification' in window)) return;
         if (this.isIosDevice() && !this.isStandaloneMode()) {
-            this.showIosInstallHintOnce();
+            if (typeof this.showIosInstallHintOnce === 'function') {
+                this.showIosInstallHintOnce();
+            }
             return;
         }
         if (Notification.permission !== 'default') return;
@@ -111,7 +113,7 @@ App.Push = {
 
         const request = () => Notification.requestPermission().catch(() => { });
         if (this.isIosDevice()) {
-            // Safari iOS is stricter: permission should be requested from a user gesture.
+          
             let asked = false;
             const askOnce = () => {
                 if (asked) return;
@@ -187,7 +189,7 @@ App.Push = {
             }
             this.saveLastId(this.lastId);
         } catch (e) {
-            // Keep silent; polling retries automatically.
+            //polling gagal, tapi tidak krusial akan coba lagi di interval berikutnya.
         } finally {
             this.pollInFlight = false;
         }
@@ -236,7 +238,7 @@ App.Push = {
         try {
             await App.Api.post(`/notifications/${numericId}/read`);
         } catch (e) {
-            // Ignore; read state is not critical for flow.
+           // tetap diam; tidak krusial jika gagal, dan akan tetap muncul di polling berikutnya jika belum terbaca.
         }
     },
 };

@@ -58,7 +58,7 @@ App.Pages.Rekap = {
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Nama Penjaga / Guard</label>
+                            <label class="form-label">Nama Penjaga</label>
                             <input type="text" class="form-input" id="rekap-guard" placeholder="Nama penjaga" required>
                         </div>
                         <div class="form-group">

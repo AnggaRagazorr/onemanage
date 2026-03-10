@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Patrol;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Laravel\Facades\Image;
 
 class PatrolController extends Controller
 {
@@ -86,7 +87,21 @@ class PatrolController extends Controller
 
         $paths = [];
         foreach ($request->file('photos', []) as $photo) {
-            $paths[] = $photo->store('patrols', 'public');
+            $filename = 'patrols/' . uniqid('patrol_', true) . '.jpg';
+
+            // Coba kompresi dengan Intervention Image (butuh GD/Imagick extension)
+            // Jika tidak tersedia, simpan file langsung tanpa kompresi
+            if (extension_loaded('gd') || extension_loaded('imagick')) {
+                $compressed = Image::read($photo)
+                    ->scaleDown(width: 1280)
+                    ->toJpeg(quality: 80);
+                Storage::disk('public')->put($filename, $compressed);
+            } else {
+                // Fallback: simpan foto langsung tanpa kompresi
+                Storage::disk('public')->putFileAs('patrols', $photo, basename($filename));
+            }
+
+            $paths[] = $filename;
         }
 
         $patrol = Patrol::create([

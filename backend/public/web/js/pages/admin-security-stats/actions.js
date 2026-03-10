@@ -137,7 +137,7 @@ App.Pages.AdminSecurityStats = {
                                 <div>
                                     <div style="font-weight:700;font-size:14px">${esc(s.name)}</div>
                                     <div style="font-size:12px;color:var(--gray-500)">
-                                        ${s.shift_type === 'pagi' ? '☀️ Pagi' : '🌙 Malam'} · ${esc(s.clock_in || '-')}
+                                        ${s.shift_type === 'pagi' ? 'Pagi' : 'Malam'} · ${esc(s.clock_in || '-')}
                                     </div>
                                 </div>
                             </div>
@@ -248,8 +248,8 @@ App.Pages.AdminSecurityStats = {
                                 <tbody>
                                     ${shifts.map((s) => {
             const shiftBadge = s.shift_type === 'pagi'
-                ? '<span class="badge badge-yellow" style="font-size:11px">☀️ Pagi</span>'
-                : '<span class="badge badge-blue" style="font-size:11px">🌙 Malam</span>';
+                ? '<span class="badge badge-yellow" style="font-size:11px">Pagi</span>'
+                : '<span class="badge badge-blue" style="font-size:11px">Malam</span>';
             const statusBadge = s.is_active
                 ? '<span class="badge badge-green" style="font-size:11px"><span style="width:6px;height:6px;border-radius:50%;background:#22C55E;display:inline-block;animation:pulse-dot 1.5s ease-in-out infinite;margin-right:4px"></span>Aktif</span>'
                 : '<span class="badge badge-gray" style="font-size:11px">Selesai</span>';

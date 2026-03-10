@@ -29,6 +29,7 @@ App.Pages.AdminDashboard = {
 
     render(data) {
         const mapRows = (res) => Array.isArray(res) ? res : (res.data || []);
+        const esc = App.escapeHtml || ((v) => String(v ?? ''));
         const pendingApproval = mapRows(data.pendingApprovalRes);
         const inUseTrips = mapRows(data.inUseTripsRes);
         const pendingKeyTrips = mapRows(data.pendingKeyTripsRes);
@@ -76,7 +77,7 @@ App.Pages.AdminDashboard = {
                                         </div>
                                         <div class="area-sub">
                                             <span class="badge ${s.shift_type === 'pagi' ? 'badge-yellow' : 'badge-blue'}" style="font-size:11px;padding:2px 8px">
-                                                ${s.shift_type === 'pagi' ? '☀️ Pagi' : '🌙 Malam'}
+                                                ${s.shift_type === 'pagi' ? 'Pagi' : 'Malam'}
                                             </span>
                                             &nbsp;·&nbsp; Clock In: ${App.formatTime ? App.formatTime(s.clock_in) : new Date(s.clock_in).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                                         </div>
@@ -150,9 +151,9 @@ App.Pages.AdminDashboard = {
                                     ${pendingApproval.slice(0, 5).map((trip) => `
                                         <tr>
                                             <td>${App.formatDate(trip.date)}</td>
-                                            <td>${trip.user_name || '-'}</td>
-                                            <td>${trip.destination || '-'}</td>
-                                            <td>${trip.start_time || '-'}</td>
+                                            <td>${esc(trip.user_name || '-')}</td>
+                                            <td>${esc(trip.destination || '-')}</td>
+                                            <td>${esc(trip.start_time || '-')}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>

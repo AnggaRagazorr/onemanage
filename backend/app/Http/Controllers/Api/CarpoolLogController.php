@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CarpoolDriver;
 use App\Models\CarpoolLog;
 use App\Models\CarpoolVehicle;
 use App\Services\CarpoolNotificationService;
@@ -199,6 +200,11 @@ class CarpoolLogController extends Controller
             return response()->json(['message' => 'Hanya driver yang bisa konfirmasi trip'], 403);
         }
 
+        $driverId = $this->resolveDriverIdForUser((int) $request->user()->id);
+        if (!$driverId || (int) $log->driver_id !== $driverId) {
+            return response()->json(['message' => 'Anda tidak ditugaskan pada trip ini'], 403);
+        }
+
         if ($log->status !== 'approved') {
             return response()->json(['message' => 'Trip tidak dalam status menunggu konfirmasi (status: ' . $log->status . ')'], 422);
         }
@@ -280,6 +286,15 @@ class CarpoolLogController extends Controller
             'end_time' => 'nullable|string',
             'last_km' => 'nullable|numeric|min:0',
         ]);
+
+        if ($request->user()->role !== 'driver') {
+            return response()->json(['message' => 'Hanya driver yang bisa menyelesaikan trip'], 403);
+        }
+
+        $driverId = $this->resolveDriverIdForUser((int) $request->user()->id);
+        if (!$driverId || (int) $log->driver_id !== $driverId) {
+            return response()->json(['message' => 'Anda tidak ditugaskan pada trip ini'], 403);
+        }
 
         if ($log->status !== 'in_use') {
             return response()->json(['message' => 'Trip belum dimulai (status: ' . $log->status . ')'], 422);
@@ -460,5 +475,14 @@ class CarpoolLogController extends Controller
                 'message' => 'Driver sedang bertugas di trip aktif lain',
             ], 422));
         }
+    }
+
+    private function resolveDriverIdForUser(int $userId): ?int
+    {
+        $driverId = CarpoolDriver::query()
+            ->where('user_id', $userId)
+            ->value('id');
+
+        return $driverId ? (int) $driverId : null;
     }
 }
