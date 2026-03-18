@@ -154,7 +154,7 @@ App.Pages.AdminSecurityStats = {
                 </div>
                 <div class="card-body">
                     <p style="font-size:13px;color:var(--gray-600)">
-                        Skor dihitung dari konsistensi patroli bulanan dengan bonus pencapaian target harian (4 ronde x 3 area).
+                        Skor dihitung dari konsistensi patroli bulanan dengan bonus pencapaian target harian (4 sesi x 3 area).
                     </p>
                 </div>
             </div>

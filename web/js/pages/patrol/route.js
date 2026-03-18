@@ -46,6 +46,35 @@ App.Router.register('/patrol', async function () {
             return acc;
         }, {});
 
+        const completedSessionsRaw = PATROL_AREAS.reduce(
+            (min, area) => Math.min(min, areaCounts[area]),
+            Number.POSITIVE_INFINITY
+        );
+        const completedSessions = Math.min(
+            completedSessionsRaw === Number.POSITIVE_INFINITY ? 0 : completedSessionsRaw,
+            PATROL_ROUNDS_PER_SHIFT
+        );
+        const conditionReportsToday = (Array.isArray(conditions) ? conditions : [])
+            .filter((c) => isTodayDate(c.date || c.created_at)).length;
+        const totalSessions = PATROL_ROUNDS_PER_SHIFT;
+        const canCreateCondition = completedSessions > conditionReportsToday;
+        const nextSession = Math.min(totalSessions, conditionReportsToday + 1);
+        let conditionGateMessage = '';
+        if (!canCreateCondition) {
+            conditionGateMessage = conditionReportsToday >= totalSessions
+                ? 'Semua laporan sesi hari ini sudah dibuat.'
+                : `Selesaikan 3 area untuk Sesi ${nextSession} sebelum membuat laporan kondisi.`;
+        }
+        App.Pages = App.Pages || {};
+        App.Pages.Patrol = App.Pages.Patrol || {};
+        App.Pages.Patrol.conditionGate = {
+            canCreateCondition,
+            completedSessions,
+            conditionReportsToday,
+            totalSessions,
+            message: conditionGateMessage,
+        };
+
         const completedScans = PATROL_AREAS.reduce((sum, area) => sum + completedByArea[area], 0);
         const remainingScans = Math.max(0, PATROL_TARGET_PER_SHIFT - completedScans);
         const progress = Math.min(100, Math.round((completedScans / PATROL_TARGET_PER_SHIFT) * 100));
@@ -62,7 +91,7 @@ App.Router.register('/patrol', async function () {
             <div class="card mb-6">
                 <div class="card-header">
                     <h3>Target Patroli Shift 12 Jam</h3>
-                    <span class="badge badge-blue">4 Ronde x 3 Area</span>
+                    <span class="badge badge-blue">4 Sesi x 3 Area</span>
                 </div>
                 <div class="card-body">
                     <div class="grid-4 mb-4">
@@ -118,7 +147,7 @@ App.Router.register('/patrol', async function () {
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Ronde</th>
+                                    <th>Sesi</th>
                                     ${PATROL_AREAS.map((area) => `<th>${area}</th>`).join('')}
                                 </tr>
                             </thead>
@@ -127,7 +156,7 @@ App.Router.register('/patrol', async function () {
             const round = idx + 1;
             return `
                                         <tr>
-                                            <td>Ronde ${round}</td>
+                                            <td>Sesi ${round}</td>
                                             ${PATROL_AREAS.map((area) => {
                 const done = completedByArea[area] >= round;
                 const badgeClass = done ? 'badge-green' : 'badge-gray';
@@ -193,11 +222,17 @@ App.Router.register('/patrol', async function () {
             <div class="card mb-6">
                 <div class="card-header">
                     <h3>Laporan Kondisi Area</h3>
-                    <button class="btn btn-outline btn-sm" onclick="App.Pages.Patrol.openConditionForm()">
+                    <button class="btn btn-outline btn-sm${canCreateCondition ? '' : ' disabled'}"
+                        ${canCreateCondition ? 'onclick="App.Pages.Patrol.openConditionForm()"' : 'onclick="App.Pages.Patrol.showConditionLocked()" disabled'}>
                         <span class="material-icons-round">add</span> Buat Laporan
                     </button>
                 </div>
                 <div class="card-body">
+                    ${!canCreateCondition && conditionGateMessage ? `
+                        <div style="margin-bottom:10px;padding:10px 12px;border:1px solid var(--warning-light);background:var(--warning-light);color:#92400E;border-radius:10px;font-size:12px;font-weight:600">
+                            ${conditionGateMessage}
+                        </div>
+                    ` : ''}
                     ${Array.isArray(conditions) && conditions.length > 0 ? `
                         <div class="table-container">
                             <table>

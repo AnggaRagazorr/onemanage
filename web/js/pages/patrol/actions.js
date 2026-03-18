@@ -383,7 +383,17 @@ App.Pages.Patrol = {
         }
     },
 
+    showConditionLocked() {
+        const message = this.conditionGate?.message
+            || 'Selesaikan 3 area untuk satu sesi sebelum membuat laporan kondisi.';
+        App.toast(message, 'warning');
+    },
+
     openConditionForm() {
+        if (this.conditionGate && !this.conditionGate.canCreateCondition) {
+            this.showConditionLocked();
+            return;
+        }
         const nowTime = new Date().toTimeString().slice(0, 5);
         App.openModal(`
             <div class="modal-header">

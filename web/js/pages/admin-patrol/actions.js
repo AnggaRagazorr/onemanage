@@ -412,7 +412,7 @@ App.Pages.AdminPatrol = {
             <div class="modal-header">
                 <h3>Foto Patroli: ${area}</h3>
                 <button class="modal-close" onclick="App.closeModal()"><span class="material-icons-round">close</span></button>
-            </div>
+            </div> 
             <div class="modal-body" style="max-height:70vh;overflow-y:auto;text-align:center">
                 ${imagesHtml}
             </div>

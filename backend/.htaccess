@@ -5,6 +5,12 @@
 
     RewriteEngine On
 
+    # Block access to sensitive files like .env
+    <FilesMatch "^\.env|composer\.json|package\.json">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
